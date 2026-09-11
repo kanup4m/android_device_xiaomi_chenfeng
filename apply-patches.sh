@@ -33,3 +33,15 @@ if [ -d "${ANDROID_BUILD_TOP}/packages/modules/UprobeStats" ]; then
         done
     fi
 fi
+
+# 3. hardware/xiaomi: /dev/xiaomi-touch ioctl support for DT2W, single tap, and SOFOD/UDFPS
+if [ -d "${ANDROID_BUILD_TOP}/hardware/xiaomi" ]; then
+    if ! git -C "${ANDROID_BUILD_TOP}/hardware/xiaomi" log -n 50 --grep="Support /dev/xiaomi-touch ioctl" --oneline 2>/dev/null | grep -q . && \
+       ! grep -q "kTouchDevPath" "${ANDROID_BUILD_TOP}/hardware/xiaomi/sensors/v2/Sensor.cpp" 2>/dev/null; then
+        echo "[chenfeng] Applying hardware/xiaomi touch ioctl patch..."
+        for patch in "${SCRIPT_DIR}/patches/hardware_xiaomi/"*.patch; do
+            [ -f "$patch" ] && git -C "${ANDROID_BUILD_TOP}/hardware/xiaomi" apply --ignore-whitespace "$patch" 2>/dev/null || \
+            patch -d "${ANDROID_BUILD_TOP}/hardware/xiaomi" -p1 -N -r - < "$patch" >/dev/null 2>&1 || true
+        done
+    fi
+fi

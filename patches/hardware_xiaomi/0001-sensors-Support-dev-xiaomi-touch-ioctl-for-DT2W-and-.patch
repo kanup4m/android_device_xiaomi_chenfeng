@@ -1,0 +1,283 @@
+From 2e9cc18ea4d6546e600cfe67b48d61479e320496 Mon Sep 17 00:00:00 2001
+From: marcmyworld <moviesminister@gmail.com>
+Date: Sat, 12 Sep 2026 05:02:07 +0530
+Subject: [PATCH] sensors: Support /dev/xiaomi-touch ioctl for DT2W and
+ UDFPS/SOFOD
+
+- Add ioctl interface for /dev/xiaomi-touch supporting touch modes:
+  * Touch_Doubletap_Mode (mode 14) for DoubleTapSensor
+  * Touch_Singletap_Mode (mode 34) for SingleTapSensor
+  * Touch_Fod_Enable (mode 10) and Touch_FodIcon_Enable (mode 16) for UdfpsSensor (SOFOD)
+- Make polling fd optional and handle absent sysfs nodes gracefully for devices
+  using direct input events (e.g. synaptics_tcm_touch.kl)
+- Guard writeEnable against non-existent mEnablePath
+- Default to enabling DoubleTapSensor and UdfpsSensor when /dev/xiaomi-touch is present
+- Correct buffer termination in UdfpsSensor readFd
+---
+ sensors/v2/Sensor.cpp        | 132 +++++++++++++++++++++++++++++++++--
+ sensors/v2/Sensor.h          |  31 +++-----
+ sensors/v2/SensorsSubHal.cpp |   5 +-
+ 3 files changed, 136 insertions(+), 32 deletions(-)
+
+diff --git a/sensors/v2/Sensor.cpp b/sensors/v2/Sensor.cpp
+index 77577e6..8e62a47 100644
+--- a/sensors/v2/Sensor.cpp
++++ b/sensors/v2/Sensor.cpp
+@@ -21,9 +21,75 @@
+ #include <utils/SystemClock.h>
+ 
+ #include <cmath>
++#include <cstring>
++#include <mutex>
++#include <sys/ioctl.h>
++#include <unistd.h>
+ 
+ namespace {
+ 
++constexpr const char* kTouchDevPath = "/dev/xiaomi-touch";
++constexpr int kTouchId = 0;
++
++constexpr uint32_t kTouchIocMagic = 'T';
++#define TOUCH_IOC_SET_CUR_VALUE _IO(kTouchIocMagic, 3)
++
++struct touch_mode_arg {
++    uint8_t touch_id;
++    uint8_t user_cmd;
++    uint16_t mode;
++    uint32_t len;
++    int32_t values[128];
++};
++
++#define TOUCH_IOC_SET_MODE _IOWR(kTouchIocMagic, 0, struct touch_mode_arg)
++
++enum TouchMode {
++    Touch_Fod_Enable = 10,
++    Touch_Aod_Enable = 11,
++    Touch_Doubletap_Mode = 14,
++    Touch_FodIcon_Enable = 16,
++    Touch_Singletap_Mode = 34,
++};
++
++static std::mutex gTouchMutex;
++
++static int setTouchMode(int mode, int value) {
++    std::lock_guard<std::mutex> lock(gTouchMutex);
++
++    int fd = open(kTouchDevPath, O_RDWR);
++    if (fd < 0) {
++        ALOGE("Failed to open %s: %d (%s)", kTouchDevPath, errno, strerror(errno));
++        return -errno;
++    }
++
++    int rc = ioctl(fd, TOUCH_IOC_SET_CUR_VALUE, kTouchId);
++    if (rc < 0) {
++        ALOGE("Failed to set touch id %d: %d (%s)", kTouchId, errno, strerror(errno));
++        close(fd);
++        return -errno;
++    }
++
++    struct touch_mode_arg arg;
++    memset(&arg, 0, sizeof(arg));
++    arg.touch_id = kTouchId;
++    arg.user_cmd = 0; // SET_MODE_VALUE
++    arg.mode = static_cast<uint16_t>(mode);
++    arg.len = 1;
++    arg.values[0] = value;
++
++    rc = ioctl(fd, TOUCH_IOC_SET_MODE, &arg);
++    if (rc < 0) {
++        ALOGE("Failed to set touch mode %d to %d: %d (%s)", mode, value, errno, strerror(errno));
++        close(fd);
++        return -errno;
++    }
++
++    close(fd);
++    ALOGI("Successfully set touch mode %d to %d", mode, value);
++    return 0;
++}
++
+ static bool readBool(int fd, bool seek) {
+     char c;
+     int rc;
+@@ -239,12 +305,16 @@ SysfsPollingOneShotSensor::SysfsPollingOneShotSensor(
+         ALOGE("failed to open wait pipe: %d", rc);
+     }
+ 
+-    mPollFd = open(pollPath.c_str(), O_RDONLY);
+-    if (mPollFd < 0) {
+-        ALOGE("failed to open poll fd: %d", mPollFd);
++    if (!pollPath.empty() && access(pollPath.c_str(), F_OK) == 0) {
++        mPollFd = open(pollPath.c_str(), O_RDONLY);
++        if (mPollFd < 0) {
++            ALOGE("failed to open poll fd %s: %d (%s)", pollPath.c_str(), errno, strerror(errno));
++        }
++    } else {
++        mPollFd = -1;
+     }
+ 
+-    if (mWaitPipeFd[0] < 0 || mWaitPipeFd[1] < 0 || mPollFd < 0) {
++    if (mWaitPipeFd[0] < 0 || mWaitPipeFd[1] < 0) {
+         mStopThread = true;
+         return;
+     }
+@@ -265,6 +335,10 @@ SysfsPollingOneShotSensor::~SysfsPollingOneShotSensor() {
+ }
+ 
+ void SysfsPollingOneShotSensor::writeEnable(bool enable) {
++    if (mEnablePath.empty() || access(mEnablePath.c_str(), F_OK) != 0) {
++        return;
++    }
++
+     std::call_once(mEnableOpenOnce, [&] { mEnableStream.open(mEnablePath); });
+ 
+     if (mEnableStream) {
+@@ -310,9 +384,9 @@ void SysfsPollingOneShotSensor::run() {
+     std::unique_lock<std::mutex> runLock(mRunMutex);
+ 
+     while (!mStopThread) {
+-        if (!mIsEnabled || mMode == OperationMode::DATA_INJECTION) {
++        if (!mIsEnabled || mMode == OperationMode::DATA_INJECTION || mPollFd < 0) {
+             mWaitCV.wait(runLock, [&] {
+-                return ((mIsEnabled && mMode == OperationMode::NORMAL) || mStopThread);
++                return ((mIsEnabled && mMode == OperationMode::NORMAL && mPollFd >= 0) || mStopThread);
+             });
+         } else {
+             // Cannot hold lock while polling.
+@@ -363,6 +437,49 @@ bool SysfsPollingOneShotSensor::readFd(const int fd) {
+     return readBool(fd, true /* seek */);
+ }
+ 
++DoubleTapSensor::DoubleTapSensor(int32_t sensorHandle, ISensorsEventCallback* callback)
++    : SysfsPollingOneShotSensor(
++              sensorHandle, callback, "/sys/class/touch/touch_dev/gesture_double_tap_state",
++              "/sys/class/touch/touch_dev/gesture_double_tap_enabled", "Double Tap Sensor",
++              "org.lineageos.sensor.double_tap",
++              static_cast<SensorType>(static_cast<int32_t>(SensorType::DEVICE_PRIVATE_BASE) + 1)) {}
++
++void DoubleTapSensor::writeEnable(bool enable) {
++    if (access(kTouchDevPath, F_OK) == 0) {
++        setTouchMode(Touch_Doubletap_Mode, enable ? 1 : 0);
++    }
++    SysfsPollingOneShotSensor::writeEnable(enable);
++}
++
++SingleTapSensor::SingleTapSensor(int32_t sensorHandle, ISensorsEventCallback* callback)
++    : SysfsPollingOneShotSensor(
++              sensorHandle, callback, "/sys/class/touch/touch_dev/gesture_single_tap_state",
++              "/sys/class/touch/touch_dev/gesture_single_tap_enabled", "Single Tap Sensor",
++              "org.lineageos.sensor.single_tap",
++              static_cast<SensorType>(static_cast<int32_t>(SensorType::DEVICE_PRIVATE_BASE) + 2)) {}
++
++void SingleTapSensor::writeEnable(bool enable) {
++    if (access(kTouchDevPath, F_OK) == 0) {
++        setTouchMode(Touch_Singletap_Mode, enable ? 1 : 0);
++    }
++    SysfsPollingOneShotSensor::writeEnable(enable);
++}
++
++UdfpsSensor::UdfpsSensor(int32_t sensorHandle, ISensorsEventCallback* callback)
++    : SysfsPollingOneShotSensor(
++              sensorHandle, callback, "/sys/class/touch/touch_dev/fod_press_status",
++              "/sys/class/touch/touch_dev/fod_longpress_gesture_enabled", "UDFPS Sensor",
++              "org.lineageos.sensor.udfps",
++              static_cast<SensorType>(static_cast<int32_t>(SensorType::DEVICE_PRIVATE_BASE) + 3)) {}
++
++void UdfpsSensor::writeEnable(bool enable) {
++    if (access(kTouchDevPath, F_OK) == 0) {
++        setTouchMode(Touch_Fod_Enable, enable ? 1 : 0);
++        setTouchMode(Touch_FodIcon_Enable, enable ? 1 : 0);
++    }
++    SysfsPollingOneShotSensor::writeEnable(enable);
++}
++
+ void UdfpsSensor::fillEventData(Event& event) {
+     event.u.data[0] = mScreenX;
+     event.u.data[1] = mScreenY;
+@@ -378,11 +495,12 @@ bool UdfpsSensor::readFd(const int fd) {
+         ALOGE("failed to seek: %d", rc);
+         return false;
+     }
+-    rc = read(fd, &buffer, sizeof(buffer));
++    rc = read(fd, buffer, sizeof(buffer) - 1);
+     if (rc < 0) {
+         ALOGE("failed to read state: %d", rc);
+         return false;
+     }
++    buffer[rc] = '\0';
+     rc = sscanf(buffer, "%d,%d,%d", &mScreenX, &mScreenY, &state);
+     if (rc == 1) {
+         // If fod_press_status contains only one value,
+diff --git a/sensors/v2/Sensor.h b/sensors/v2/Sensor.h
+index 25def1d..54ecc7c 100644
+--- a/sensors/v2/Sensor.h
++++ b/sensors/v2/Sensor.h
+@@ -125,37 +125,22 @@ class SysfsPollingOneShotSensor : public OneShotSensor {
+ 
+ class DoubleTapSensor : public SysfsPollingOneShotSensor {
+   public:
+-    DoubleTapSensor(int32_t sensorHandle, ISensorsEventCallback* callback)
+-        : SysfsPollingOneShotSensor(
+-                  sensorHandle, callback, "/sys/class/touch/touch_dev/gesture_double_tap_state",
+-                  "/sys/class/touch/touch_dev/gesture_double_tap_enabled", "Double Tap Sensor",
+-                  "org.lineageos.sensor.double_tap",
+-                  static_cast<SensorType>(static_cast<int32_t>(SensorType::DEVICE_PRIVATE_BASE) +
+-                                          1)) {}
++    DoubleTapSensor(int32_t sensorHandle, ISensorsEventCallback* callback);
++    virtual void writeEnable(bool enable) override;
+ };
+ 
+ class SingleTapSensor : public SysfsPollingOneShotSensor {
+   public:
+-    SingleTapSensor(int32_t sensorHandle, ISensorsEventCallback* callback)
+-        : SysfsPollingOneShotSensor(
+-                  sensorHandle, callback, "/sys/class/touch/touch_dev/gesture_single_tap_state",
+-                  "/sys/class/touch/touch_dev/gesture_single_tap_enabled", "Single Tap Sensor",
+-                  "org.lineageos.sensor.single_tap",
+-                  static_cast<SensorType>(static_cast<int32_t>(SensorType::DEVICE_PRIVATE_BASE) +
+-                                          2)) {}
++    SingleTapSensor(int32_t sensorHandle, ISensorsEventCallback* callback);
++    virtual void writeEnable(bool enable) override;
+ };
+ 
+ class UdfpsSensor : public SysfsPollingOneShotSensor {
+   public:
+-    UdfpsSensor(int32_t sensorHandle, ISensorsEventCallback* callback)
+-        : SysfsPollingOneShotSensor(
+-                  sensorHandle, callback, "/sys/class/touch/touch_dev/fod_press_status",
+-                  "/sys/class/touch/touch_dev/fod_longpress_gesture_enabled", "UDFPS Sensor",
+-                  "org.lineageos.sensor.udfps",
+-                  static_cast<SensorType>(static_cast<int32_t>(SensorType::DEVICE_PRIVATE_BASE) +
+-                                          3)) {}
+-    virtual void fillEventData(Event& event);
+-    virtual bool readFd(const int fd);
++    UdfpsSensor(int32_t sensorHandle, ISensorsEventCallback* callback);
++    virtual void writeEnable(bool enable) override;
++    virtual void fillEventData(Event& event) override;
++    virtual bool readFd(const int fd) override;
+ 
+   private:
+     int mScreenX;
+diff --git a/sensors/v2/SensorsSubHal.cpp b/sensors/v2/SensorsSubHal.cpp
+index b1d499c..9db66cb 100644
+--- a/sensors/v2/SensorsSubHal.cpp
++++ b/sensors/v2/SensorsSubHal.cpp
+@@ -34,13 +34,14 @@ using ::android::hardware::Void;
+ using ::android::hardware::sensors::V2_0::implementation::ScopedWakelock;
+ 
+ SensorsSubHal::SensorsSubHal() : mCallback(nullptr), mNextHandle(1) {
+-    if (property_get_bool("ro.vendor.sensors.xiaomi.double_tap", false)) {
++    bool hasXiaomiTouch = (access("/dev/xiaomi-touch", F_OK) == 0);
++    if (property_get_bool("ro.vendor.sensors.xiaomi.double_tap", hasXiaomiTouch)) {
+         AddSensor<DoubleTapSensor>();
+     }
+     if (property_get_bool("ro.vendor.sensors.xiaomi.single_tap", false)) {
+         AddSensor<SingleTapSensor>();
+     }
+-    if (property_get_bool("ro.vendor.sensors.xiaomi.udfps", false)) {
++    if (property_get_bool("ro.vendor.sensors.xiaomi.udfps", hasXiaomiTouch)) {
+         AddSensor<UdfpsSensor>();
+     }
+ }
+-- 
+2.55.0
+
