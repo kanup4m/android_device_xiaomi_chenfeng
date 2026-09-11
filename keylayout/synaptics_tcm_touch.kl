@@ -1,0 +1,8 @@
+#
+# Copyright (C) 2024 The LineageOS Project
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
+key 143   WAKEUP            WAKE
+key 354   WAKEUP            WAKE

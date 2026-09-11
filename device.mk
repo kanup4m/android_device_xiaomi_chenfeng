@@ -450,7 +450,8 @@ PRODUCT_PACKAGES += \
 $(call soong_config_set, XIAOMI_TOUCH, HIGH_TOUCH_POLLING_PATH, /sys/devices/virtual/touch/touch_dev/bump_sample_rate)
 
 PRODUCT_COPY_FILES += \
-    frameworks/native/data/etc/android.hardware.touchscreen.multitouch.jazzhand.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.touchscreen.multitouch.jazzhand.xml
+    frameworks/native/data/etc/android.hardware.touchscreen.multitouch.jazzhand.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.touchscreen.multitouch.jazzhand.xml \
+    $(LOCAL_PATH)/keylayout/synaptics_tcm_touch.kl:$(TARGET_COPY_OUT_VENDOR)/usr/keylayout/synaptics_tcm_touch.kl
 
 # Update engine
 PRODUCT_PACKAGES += \
