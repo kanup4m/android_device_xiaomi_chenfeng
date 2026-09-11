@@ -12,8 +12,7 @@ ANDROID_BUILD_TOP="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
 # 1. frameworks/native: GraphicBuffer 256-byte ABI fix
 if [ -d "${ANDROID_BUILD_TOP}/frameworks/native" ]; then
     if ! git -C "${ANDROID_BUILD_TOP}/frameworks/native" log -n 50 --grep="Decouple DependencyMonitor to restore 256-byte ABI" --oneline 2>/dev/null | grep -q . && \
-       ! git -C "${ANDROID_BUILD_TOP}/frameworks/native" diff 2>/dev/null | grep -q "getDependencyMonitor" && \
-       ! grep -q "getDependencyMonitor" "${ANDROID_BUILD_TOP}/frameworks/native/libs/ui/include/ui/GraphicBuffer.h" 2>/dev/null; then
+       ! grep -q "static DependencyMonitor sMonitor;" "${ANDROID_BUILD_TOP}/frameworks/native/libs/ui/GraphicBuffer.cpp" 2>/dev/null; then
         echo "[chenfeng] Applying frameworks/native GraphicBuffer ABI patch..."
         for patch in "${SCRIPT_DIR}/patches/frameworks_native/"*.patch; do
             [ -f "$patch" ] && git -C "${ANDROID_BUILD_TOP}/frameworks/native" apply --ignore-whitespace "$patch" 2>/dev/null || \
