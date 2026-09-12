@@ -18,6 +18,7 @@ import android.database.ContentObserver;
 import android.hardware.display.AmbientDisplayConfiguration;
 import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
 import android.os.SystemProperties;
 import android.os.UserHandle;
 import android.provider.Settings;
@@ -46,22 +47,26 @@ public class ColorModeService extends Service {
         267, new DfParams(26, 3, 0)    // sRGB
     );
 
-    private Handler mHandler = new Handler();
+    private final Handler mHandler = new Handler(Looper.getMainLooper());
     private AmbientDisplayConfiguration mAmbientConfig;
     private boolean mIsDozing;
+    private int mCurrentColorMode = -1;
+
+    private final Runnable mUpdateColorModeRunnable = this::setCurrentColorMode;
 
     private final ContentObserver mSettingObserver = new ContentObserver(mHandler) {
         @Override
         public void onChange(boolean selfChange) {
-            Log.e(TAG, "SettingObserver: onChange");
-            setCurrentColorMode();
+            Log.d(TAG, "SettingObserver: onChange");
+            mHandler.removeCallbacks(mUpdateColorModeRunnable);
+            mHandler.postDelayed(mUpdateColorModeRunnable, 100);
         }
     };
 
     private final BroadcastReceiver mScreenStateReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            Log.e(TAG, "onReceive: " + intent.getAction());
+            Log.d(TAG, "onReceive: " + intent.getAction());
             handleScreenStateChanged(intent);
         }
     };
@@ -69,19 +74,20 @@ public class ColorModeService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
-        Log.e(TAG, "onCreate");
+        Log.d(TAG, "onCreate");
         setupService();
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        Log.e(TAG, "onStartCommand");
+        Log.d(TAG, "onStartCommand");
         return START_STICKY;
     }
 
     @Override
     public void onDestroy() {
-        Log.e(TAG, "onDestroy");
+        Log.d(TAG, "onDestroy");
+        mHandler.removeCallbacksAndMessages(null);
         teardownService();
         super.onDestroy();
     }
@@ -111,7 +117,7 @@ public class ColorModeService extends Service {
 
     private void setCurrentColorMode() {
         if (mIsDozing) {
-            Log.e(TAG, "Skipping color mode change in AOD");
+            Log.d(TAG, "Skipping color mode change in AOD");
             return;
         }
 
@@ -119,9 +125,23 @@ public class ColorModeService extends Service {
                 DEFAULT_COLOR_MODE, UserHandle.USER_CURRENT);
 
         DfParams params = COLOR_MAP.getOrDefault(colorMode, STANDARD_PARAMS);
-        Log.e(TAG, "Setting color mode: " + colorMode + ", params=" + params);
+        Log.i(TAG, "Setting color mode: " + colorMode + ", params=" + params);
 
-        DfWrapper.setDisplayFeature(params.mode == EXPERT_MODE ? EXPERT_PARAMS : params);
+        if (params.mode == EXPERT_MODE) {
+            if (mCurrentColorMode != colorMode) {
+                // Initialize expert mode engine first
+                DfWrapper.setDisplayFeature(EXPERT_PARAMS);
+                // Set the specific expert submode (Original, P3, or sRGB)
+                DfWrapper.setDisplayFeature(params);
+            }
+        } else {
+            // If leaving expert mode, cleanly exit expert mode engine
+            if (mCurrentColorMode == 269 || mCurrentColorMode == 268 || mCurrentColorMode == 267) {
+                DfWrapper.setDisplayFeature(new DfParams(EXPERT_MODE, 0, 0));
+            }
+            DfWrapper.setDisplayFeature(params);
+        }
+        mCurrentColorMode = colorMode;
     }
 
     private void handleScreenStateChanged(Intent intent) {
@@ -143,15 +163,17 @@ public class ColorModeService extends Service {
     }
 
     private void restoreColorModeAfterDoze() {
+        mHandler.removeCallbacks(mUpdateColorModeRunnable);
         mHandler.postDelayed(() -> {
-            Log.e(TAG, "Restoring color mode after AOD");
+            Log.d(TAG, "Restoring color mode after AOD");
+            mCurrentColorMode = -1;
             setCurrentColorMode();
         }, 100);
     }
 
     private void handleScreenOff() {
         if (!mAmbientConfig.alwaysOnEnabled(UserHandle.USER_CURRENT)) {
-            Log.e(TAG, "AOD not enabled");
+            Log.d(TAG, "AOD not enabled");
             mIsDozing = false;
             return;
         }
@@ -160,8 +182,8 @@ public class ColorModeService extends Service {
     }
 
     private void setStandardColorModeForDoze() {
-        mHandler.removeCallbacksAndMessages(null);
-        Log.e(TAG, "Setting standard color mode for AOD");
+        mHandler.removeCallbacks(mUpdateColorModeRunnable);
+        Log.d(TAG, "Setting standard color mode for AOD");
         DfWrapper.setDisplayFeature(STANDARD_PARAMS);
     }
 }
