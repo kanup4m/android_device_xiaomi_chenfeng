@@ -11,7 +11,7 @@
     <bool name="config_wifi5ghzSupport" translatable="false">true</bool>
 
     <!-- boolean indicating whether the WiFi chipset has 6GHz band support -->
-    <bool name="config_wifi6ghzSupport" translatable="false">true</bool>
+    <bool name="config_wifi6ghzSupport" translatable="false">false</bool>
 
     <!-- Boolean indicating whether IP address allocation in EAPOL is enabled by default in Wi-Fi.
          The GO fixed IP address is set to 192.168.49.1 and subnet mask to 255.255.255.0 -->
@@ -32,17 +32,12 @@
     <!-- List of allowed channels in 2GHz band for softap. If the device doesn't want to restrict
          channels this should be empty. Values is a comma separated channel string and/or channel
          range string like '1-6,11'. -->
-    <string name="config_wifiSoftap2gChannelList" translatable="false" />
+    <string name="config_wifiSoftap2gChannelList" translatable="false">1-11</string>
 
     <!-- List of allowed channels in 5GHz band for softap. If the device doesn't want to restrict
          channels this should be empty. Values is a comma separated channel string and/or channel
          range string like '36-48,149'. -->
-    <string name="config_wifiSoftap5gChannelList" translatable="false" />
-
-    <!-- List of allowed channels in 6GHz band for softap. If the device doesn't want to restrict
-         channels this should be empty. Values is a comma separated channel string and/or channel
-         range string like '36-48,149'. -->
-    <string name="config_wifiSoftap6gChannelList" translatable="false" />
+    <string name="config_wifiSoftap5gChannelList" translatable="false">36-48,149-165</string>
 
     <!-- Boolean indicating performing a partial initial scan is enabled -->
     <bool name="config_wifiEnablePartialInitialScan" translatable="false">true</bool>
@@ -63,7 +58,7 @@
     <bool name="config_wifiSoftapIeee80211axSupported" translatable="false">true</bool>
 
     <!-- Wifi driver supports IEEE80211BE for softap -->
-    <bool name="config_wifiSoftapIeee80211beSupported" translatable="false">true</bool>
+    <bool name="config_wifiSoftapIeee80211beSupported" translatable="false">false</bool>
 
     <!-- Wifi driver supports IEEE80211AX single user beamformer for softap -->
     <bool name="config_wifiSoftapHeSuBeamformerSupported" translatable="false">true</bool>
@@ -72,7 +67,7 @@
     <bool name="config_wifiSoftapHeSuBeamformeeSupported" translatable="false">true</bool>
 
     <!-- Wifi driver supports 6GHz band for softap when chip support 6GHz -->
-    <bool name="config_wifiSoftap6ghzSupported" translatable="false">true</bool>
+    <bool name="config_wifiSoftap6ghzSupported" translatable="false">false</bool>
 
     <!-- Indicates that the framework should auto append lower bands to band configuration for
          avoiding coexistence handling. For example: 5g only band will change to 2.4g|5g and
@@ -108,7 +103,7 @@
     <bool name="config_wifiSaeUpgradeOffloadEnabled" translatable="false">true</bool>
 
     <!-- Wifi driver Automatic channel selection (ACS) for softap to include DFS channels -->
-    <bool name="config_wifiSoftapAcsIncludeDfs" translatable="false">true</bool>
+    <bool name="config_wifiSoftapAcsIncludeDfs" translatable="false">false</bool>
 
     <!-- Interval Multiplier for PNO scan. After not finding any networks for
          config_wifiPnoScanIterations, PNO will multiply the scan interval by the value
