@@ -31,4 +31,4 @@ PRODUCT_BUILD_PROP_OVERRIDES += \
 
 PRODUCT_GMS_CLIENTID_BASE := android-xiaomi
 
-WITH_GMS ?= false
+# WITH_GMS ?= false
