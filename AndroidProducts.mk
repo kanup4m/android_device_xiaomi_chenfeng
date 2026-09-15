@@ -5,4 +5,5 @@
 #
 
 PRODUCT_MAKEFILES := \
-    $(LOCAL_DIR)/lineage_chenfeng.mk
+    $(LOCAL_DIR)/lineage_chenfeng.mk \
+    $(LOCAL_DIR)/custom_chenfeng.mk
