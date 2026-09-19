@@ -3,3 +3,7 @@ audio.offload.min.duration.secs=30
 
 # Media
 media.stagefright.audio.deep=true
+
+# Gaming
+# base_system.mk ships ro.surface_flinger.game_default_frame_rate_override=60
+debug.graphics.game_default_frame_rate.disabled=true
