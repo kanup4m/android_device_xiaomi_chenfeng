@@ -19,20 +19,25 @@ PRODUCT_NAME := rising_chenfeng
 PRODUCT_DEVICE := chenfeng
 PRODUCT_MANUFACTURER := Xiaomi
 PRODUCT_BRAND := Xiaomi
-PRODUCT_MODEL := 24053PY09I
+PRODUCT_MODEL := Xiaomi 14 Civi
 
 PRODUCT_SYSTEM_NAME := chenfeng_global
 PRODUCT_SYSTEM_DEVICE := chenfeng
 
 PRODUCT_BUILD_PROP_OVERRIDES += \
     BuildDesc="chenfeng_global-user 16 BP2A.250605.031.A3 OS3.0.307.0.WNJCNXM release-keys" \
-    BuildFingerprint=Xiaomi/chenfeng_global/chenfeng:16/BP2A.250605.031.A3/OS3.0.307.0.WNJCNXM:user/release-keys \
+    BuildFingerprint="Xiaomi/chenfeng_global/chenfeng:16/BP2A.250605.031.A3/OS3.0.307.0.WNJCNXM:user/release-keys" \
     DeviceName=$(PRODUCT_SYSTEM_DEVICE) \
     DeviceProduct=$(PRODUCT_SYSTEM_NAME) \
     RisingChipset="Snapdragon 8s Gen 3" \
     RisingMaintainer="Beyonder"
 
 RISING_MAINTAINER := Beyonder
+
+# RisingOS device flags
+TARGET_ENABLE_BLUR := true
+TARGET_HAS_UDFPS := true
+PRODUCT_NO_CAMERA := true # Aperture off, Leica MiuiCamera is bundled via chenfeng-miuicamera
 
 # RisingOS build flags (CORE GMS)
 WITH_GMS := true
