@@ -328,8 +328,9 @@ PRODUCT_COPY_FILES += \
     frameworks/native/data/etc/com.nxp.mifare.xml:$(TARGET_COPY_OUT_ODM)/etc/permissions/com.nxp.mifare.xml
 
 # Overlays
+# NOTE (Rising sixteen): ApertureOverlayChenfeng removed — PRODUCT_NO_CAMERA=true
+# gates Aperture out, target org.lineageos.aperture is never built.
 PRODUCT_PACKAGES += \
-    ApertureOverlayChenfeng \
     CarrierConfigOverlayChenfeng \
     FrameworkOverlayChenfeng \
     LineageDialerOverlayChenfeng \
