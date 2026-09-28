@@ -1,4 +1,8 @@
 vendor_restricted_prop(vendor_fp_info_prop)
+# Required by device/qcom/sepolicy generic cameraserver policy
+# (get_prop(cameraserver, vendor_persist_camera_prop)); no upstream
+# source declares this type, so the device tree must.
+type vendor_persist_camera_prop, property_type;
 vendor_public_prop(vendor_displayfeature_prop)
 vendor_public_prop(vendor_panel_info_prop)
 vendor_public_prop(vendor_camera_sensor_prop)
