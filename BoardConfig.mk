@@ -148,13 +148,6 @@ BOARD_VENDOR_RAMDISK_KERNEL_MODULES_LOAD := $(patsubst %,$(RAMDISK_MODULES_PATH)
 BOARD_VENDOR_RAMDISK_RECOVERY_KERNEL_MODULES_LOAD  := $(patsubst %,$(RAMDISK_MODULES_PATH)/%,$(shell cat $(RAMDISK_MODULES_PATH)/modules.load.recovery))
 BOARD_VENDOR_RAMDISK_KERNEL_MODULES_BLOCKLIST_FILE := $(RAMDISK_MODULES_PATH)/modules.blocklist
 
-# Lineage board fragments (kernel vars + Soong exports).
-# Rising's envsetup only sets LINEAGE_BUILD for lineage_* products, so
-# build/make never auto-includes BoardConfigLineage.mk for rising_chenfeng —
-# without it lineageVarsPlugin lacks KERNEL_BUILD_OUT_PREFIX /
-# TARGET_KERNEL_PLATFORM_TARGET and Soong bootstrap fails.
-include vendor/lineage/config/BoardConfigLineage.mk
-
 # Partitions
 -include vendor/lineage/config/BoardConfigReservedSize.mk
 
@@ -264,3 +257,10 @@ include vendor/xiaomi/chenfeng/BoardConfigVendor.mk
 
 # Vendor MiuiCamera
 -include device/xiaomi/chenfeng-miuicamera/BoardConfig.mk
+
+# Lineage board fragments (kernel vars + Soong exports + Qcom variant).
+# Rising's envsetup only sets LINEAGE_BUILD for lineage_* products, so
+# build/make never auto-includes BoardConfigLineage.mk for rising_chenfeng.
+# Must stay LAST: BoardConfigQcom.mk derives QCOM_HARDWARE_VARIANT from
+# TARGET_BOARD_PLATFORM, which is set above.
+include vendor/lineage/config/BoardConfigLineage.mk
