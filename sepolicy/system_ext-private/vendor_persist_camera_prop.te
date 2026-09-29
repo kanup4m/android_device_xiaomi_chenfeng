@@ -9,4 +9,7 @@
 # in vendor/ would duplicate at secilc link time). The actual property
 # mapping (persist.vendor.camera.*) stays in vendor property_contexts;
 # *_contexts files are installed verbatim, not type-checked at build.
-type vendor_persist_camera_prop, property_type;
+# Declared via vendor_public_prop (not a bare type): the macro adds the
+# vendor_property_type attribute that both Treble sysprop neverallows in
+# system/sepolicy/private/property.te key their exemptions off.
+vendor_public_prop(vendor_persist_camera_prop);
