@@ -205,6 +205,10 @@ ENABLE_VENDOR_RIL_SERVICE := true
 include device/lineage/sepolicy/libperfmgr/sepolicy.mk
 include device/qcom/sepolicy_vndr/SEPolicy.mk
 BOARD_VENDOR_SEPOLICY_DIRS += $(DEVICE_PATH)/sepolicy/vendor
+# system_ext scope: declares vendor_persist_camera_prop, required by
+# device/qcom/sepolicy generic cameraserver policy (vendor/ sources are
+# not part of system_ext_sepolicy.conf, so it cannot live there).
+SYSTEM_EXT_PRIVATE_SEPOLICY_DIRS += $(DEVICE_PATH)/sepolicy/system_ext-private
 
 # Vendor security patch
 VENDOR_SECURITY_PATCH := 2025-12-01

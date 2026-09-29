@@ -1,0 +1,12 @@
+# Declares vendor_persist_camera_prop in system_ext scope.
+#
+# device/qcom/sepolicy generic cameraserver policy
+# (get_prop(cameraserver, vendor_persist_camera_prop)) is compiled into
+# system_ext_sepolicy, whose .conf is assembled from plat + system_ext
+# sources ONLY (see system/sepolicy se_policy_conf for
+# system_ext_sepolicy.conf) — vendor/ declarations are invisible to it,
+# so the type must be declared here, exactly once (a second declaration
+# in vendor/ would duplicate at secilc link time). The actual property
+# mapping (persist.vendor.camera.*) stays in vendor property_contexts;
+# *_contexts files are installed verbatim, not type-checked at build.
+type vendor_persist_camera_prop, property_type;
