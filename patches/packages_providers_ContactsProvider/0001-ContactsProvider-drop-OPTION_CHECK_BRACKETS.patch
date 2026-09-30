@@ -1,0 +1,35 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Beyonder <kanup4m@rising>
+Date: Wed, 30 Sep 2026 00:00:00 +0000
+Subject: [PATCH] ContactsProvider: drop OPTION_CHECK_BRACKETS
+
+AOSP 16 (and Rising's frameworks/base fork) removed
+SQLiteTokenizer.OPTION_CHECK_BRACKETS; only OPTION_NONE and
+OPTION_TOKEN_ONLY remain. Tokenize with a no-op consumer instead:
+malformed quotes are still rejected, and SQLite itself rejects
+unbalanced SQL at query time.
+
+Fixes: cannot find symbol: variable OPTION_CHECK_BRACKETS
+---
+ src/com/android/providers/contacts/util/SelectionBuilder.java | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/src/com/android/providers/contacts/util/SelectionBuilder.java b/src/com/android/providers/contacts/util/SelectionBuilder.java
+index 1111111..2222222 100644
+--- a/src/com/android/providers/contacts/util/SelectionBuilder.java
++++ b/src/com/android/providers/contacts/util/SelectionBuilder.java
+@@ -45,7 +45,10 @@ public class SelectionBuilder {
+      */
+     public SelectionBuilder addClause(String clause) {
+         if (!TextUtils.isEmpty(clause)) {
+-            SQLiteTokenizer.tokenize(clause, SQLiteTokenizer.OPTION_CHECK_BRACKETS, null);
++            // Rising/AOSP 16 dropped OPTION_CHECK_BRACKETS; tokenize with a
++            // no-op consumer (still rejects malformed quotes; SQLite itself
++            // rejects unbalanced SQL at query time).
++            SQLiteTokenizer.tokenize(clause, SQLiteTokenizer.OPTION_NONE, token -> {});
+             mWhereClauses.add(clause);
+         }
+         return this;
+-- 
+2.55.0
+

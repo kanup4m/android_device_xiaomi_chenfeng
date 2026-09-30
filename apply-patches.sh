@@ -45,3 +45,16 @@ if [ -d "${ANDROID_BUILD_TOP}/hardware/xiaomi" ]; then
         done
     fi
 fi
+
+# 4. packages/providers/ContactsProvider: OPTION_CHECK_BRACKETS was removed
+# in AOSP 16 / Rising frameworks/base; Lineage's provider still uses it
+if [ -d "${ANDROID_BUILD_TOP}/packages/providers/ContactsProvider" ]; then
+    if ! git -C "${ANDROID_BUILD_TOP}/packages/providers/ContactsProvider" log -n 50 --grep="drop OPTION_CHECK_BRACKETS" --oneline 2>/dev/null | grep -q . && \
+       ! grep -q "OPTION_NONE, token -> {}" "${ANDROID_BUILD_TOP}/packages/providers/ContactsProvider/src/com/android/providers/contacts/util/SelectionBuilder.java" 2>/dev/null; then
+        echo "[chenfeng] Applying ContactsProvider OPTION_CHECK_BRACKETS patch..."
+        for patch in "${SCRIPT_DIR}/patches/packages_providers_ContactsProvider/"*.patch; do
+            [ -f "$patch" ] && git -C "${ANDROID_BUILD_TOP}/packages/providers/ContactsProvider" apply --ignore-whitespace "$patch" 2>/dev/null || \
+            patch -d "${ANDROID_BUILD_TOP}/packages/providers/ContactsProvider" -p1 -N -r - < "$patch" >/dev/null 2>&1 || true
+        done
+    fi
+fi
