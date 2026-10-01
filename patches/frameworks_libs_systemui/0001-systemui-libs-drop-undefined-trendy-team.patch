@@ -1,0 +1,35 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Beyonder <kanup4m@rising>
+Date: Wed, 30 Sep 2026 00:00:00 +0000
+Subject: [PATCH] systemui-libs: drop undefined trendy_team_performance
+
+Rising systemui-lib sets default_team to a team defined only in
+Rising build repo, which this manifest does not use (Lineage build).
+Team metadata does not affect the build output; drop it.
+---
+diff --git a/tracinglib/Android.bp b/tracinglib/Android.bp
+index 1111111..2222222 100644
+--- a/tracinglib/Android.bp
++++ b/tracinglib/Android.bp
+@@ -13,7 +13,3 @@
+ // See the License for the specific language governing permissions and
+ // limitations under the License.
+ //
+-
+-package {
+-    default_team: "trendy_team_performance",
+-}
+diff --git a/tracinglib/benchmark/Android.bp b/tracinglib/benchmark/Android.bp
+index 1111111..2222222 100644
+--- a/tracinglib/benchmark/Android.bp
++++ b/tracinglib/benchmark/Android.bp
+@@ -13,7 +13,6 @@
+ // limitations under the License.
+ 
+ package {
+-    default_team: "trendy_team_performance",
+     default_applicable_licenses: ["Android-Apache-2.0"],
+ }
+ 
+-- 
+2.55.0

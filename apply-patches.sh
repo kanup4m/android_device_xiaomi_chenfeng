@@ -62,6 +62,7 @@ fi
 # 5. frameworks/base: restore Lineage satellite-entitlement + OTP (Telephony)
 # and trash (DocumentsContract) APIs dropped by Rising's fork
 if [ -d "${ANDROID_BUILD_TOP}/frameworks/base" ]; then
+    echo "[chenfeng] frameworks/base Telephony marker count: $(grep -c "COLUMN_SATELLITE_ENTITLEMENT_BARRED_PLMNS" "${ANDROID_BUILD_TOP}/frameworks/base/core/java/android/provider/Telephony.java" 2>/dev/null || echo 0)"
     if ! grep -q "COLUMN_SATELLITE_ENTITLEMENT_BARRED_PLMNS" "${ANDROID_BUILD_TOP}/frameworks/base/core/java/android/provider/Telephony.java" 2>/dev/null; then
         echo "[chenfeng] Applying frameworks/base Lineage API restore patches..."
         for patch in "${SCRIPT_DIR}/patches/frameworks_base/"*.patch; do
@@ -105,6 +106,18 @@ if [ -d "${ANDROID_BUILD_TOP}/packages/providers/CallLogProvider" ]; then
         for patch in "${SCRIPT_DIR}/patches/packages_providers_CallLogProvider/"*.patch; do
             [ -f "$patch" ] && git -C "${ANDROID_BUILD_TOP}/packages/providers/CallLogProvider" apply --ignore-whitespace "$patch" 2>/dev/null || \
             patch -d "${ANDROID_BUILD_TOP}/packages/providers/CallLogProvider" -p1 -N -r - < "$patch" >/dev/null 2>&1 || true
+        done
+    fi
+fi
+
+# 9. frameworks/libs/systemui: Rising sets default_team to a team defined
+# only in Rising's build repo (this manifest uses Lineage's build)
+if [ -d "${ANDROID_BUILD_TOP}/frameworks/libs/systemui" ]; then
+    if grep -q "trendy_team_performance" "${ANDROID_BUILD_TOP}/frameworks/libs/systemui/tracinglib/Android.bp" 2>/dev/null; then
+        echo "[chenfeng] Applying systemui-libs trendy_team patch..."
+        for patch in "${SCRIPT_DIR}/patches/frameworks_libs_systemui/"*.patch; do
+            [ -f "$patch" ] && git -C "${ANDROID_BUILD_TOP}/frameworks/libs/systemui" apply --ignore-whitespace "$patch" 2>/dev/null || \
+            patch -d "${ANDROID_BUILD_TOP}/frameworks/libs/systemui" -p1 -N -r - < "$patch" >/dev/null 2>&1 || true
         done
     fi
 fi
