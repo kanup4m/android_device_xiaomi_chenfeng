@@ -1,0 +1,23 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Beyonder <kanup4m@rising>
+Date: Wed, 30 Sep 2026 00:00:00 +0000
+Subject: [PATCH] Nfc: avoid removed DISPLAY_CATEGORY_BUILT_IN_DISPLAYS
+
+Rising DisplayManager dropped the built-in display category. Query all
+displays instead; the ON-state loop below already picks the right one.
+---
+diff --git a/src/com/android/nfc/ScreenStateHelper.java b/src/com/android/nfc/ScreenStateHelper.java
+index 1111111..2222222 100644
+--- a/src/com/android/nfc/ScreenStateHelper.java
++++ b/src/com/android/nfc/ScreenStateHelper.java
+@@ -41,7 +41,7 @@ class ScreenStateHelper {
+         Display displayBuiltIn = null;
+         if (Flags.displayCategoryBuiltIn()) {
+             Display[] displaysBuiltIn =
+-                    mDisplayManager.getDisplays(DisplayManager.DISPLAY_CATEGORY_BUILT_IN_DISPLAYS);
++                    mDisplayManager.getDisplays();
+             if (displaysBuiltIn.length > 0) {
+                 displayBuiltIn = displaysBuiltIn[0];
+ 
+-- 
+2.55.0

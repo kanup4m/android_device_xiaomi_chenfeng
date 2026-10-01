@@ -1,0 +1,147 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Beyonder <kanup4m@rising>
+Date: Wed, 30 Sep 2026 00:00:00 +0000
+Subject: [PATCH] Telephony: restore Lineage satellite-entitlement + OTP APIs
+
+Rising dropped Lineage additions still used by Lineage TelephonyProvider.
+Restore the five SimInfo entitlement columns (same values, added to
+ALL_COLUMNS) and the Sms OTP surface. The OTP aconfig gate is absent
+here, so isOtpRedactionEnabled keeps only the device-managed check.
+---
+diff --git a/core/java/android/provider/Telephony.java b/core/java/android/provider/Telephony.java
+index 1111111..2222222 100644
+--- a/core/java/android/provider/Telephony.java
++++ b/core/java/android/provider/Telephony.java
+@@ -419,6 +419,60 @@ public final class Telephony {
+          */
+         public static final String DEFAULT_SORT_ORDER = "date DESC";
+ 
++        /**
++         * SMS column marker used by OTP redaction.
++         *
++         * @hide
++         */
++        public static final String CONTAINS_OTP = "contains_otp";
++
++        /**
++         * OTP type: no OTP handling.
++         *
++         * @hide
++         */
++        public static final int OTP_TYPE_NONE = 0;
++
++        /**
++         * OTP type: message contains an OTP.
++         *
++         * @hide
++         */
++        public static final int OTP_TYPE_CONTAINS_OTP = 1;
++
++        /**
++         * OTP type: OTP handling pending.
++         *
++         * @hide
++         */
++        public static final int OTP_TYPE_PENDING = 2;
++
++        private static final Matcher CONTAINS_NUMBER =
++                Pattern.compile(".*\\d.*").matcher("");
++
++        /**
++         * Checks if the message should be scanned for OTP content.
++         *
++         * @hide
++         */
++        public static boolean shouldCheckForOtp(Context context, String message) {
++            if (!isOtpRedactionEnabled(context)) {
++                return false;
++            }
++            return CONTAINS_NUMBER.reset(message).find();
++        }
++
++        /**
++         * Checks if OTP redaction in SMS is enabled.
++         *
++         * @hide
++         */
++        public static boolean isOtpRedactionEnabled(Context context) {
++            android.app.admin.DevicePolicyManager dpm =
++                    context.getSystemService(android.app.admin.DevicePolicyManager.class);
++            return dpm == null || !dpm.isDeviceManaged();
++        }
++
+         /**
+          * Add an SMS to the given URI.
+          *
+@@ -4995,6 +5049,55 @@ public final class Telephony {
+         public static final String COLUMN_IS_SATELLITE_PROVISIONED_FOR_NON_IP_DATAGRAM =
+                 "is_satellite_provisioned_for_non_ip_datagram";
+ 
++        /**
++         * TelephonyProvider column name for satellite entitlement barred plmns
++         * list separated by comma [,]. By default, it's empty.
++         *
++         * @hide
++         */
++        public static final String COLUMN_SATELLITE_ENTITLEMENT_BARRED_PLMNS =
++                "satellite_entitlement_barred_plmns";
++
++        /**
++         * TelephonyProvider column name for satellite entitlement data plan
++         * for plmns, built in Json format in Key:Value pair.
++         * By default, it's empty.
++         *
++         * @hide
++         */
++        public static final String COLUMN_SATELLITE_ENTITLEMENT_DATA_PLAN_PLMNS =
++                "satellite_entitlement_data_plan_plmns";
++
++        /**
++         * TelephonyProvider column name for satellite entitlement service type
++         * map, built in Json format in Key:Value pair.
++         * By default, it's empty.
++         *
++         * @hide
++         */
++        public static final String COLUMN_SATELLITE_ENTITLEMENT_SERVICE_TYPE_MAP =
++                "satellite_entitlement_service_type_map";
++
++        /**
++         * TelephonyProvider column name for satellite entitlement data service
++         * policy type map, built in Json format in Key:Value pair.
++         * By default, it's empty.
++         *
++         * @hide
++         */
++        public static final String COLUMN_SATELLITE_ENTITLEMENT_DATA_SERVICE_POLICY =
++                "satellite_entitlement_data_service_policy";
++
++        /**
++         * TelephonyProvider column name for satellite entitlement voice service
++         * policy type map, built in Json format in Key:Value pair.
++         * By default, it's empty.
++         *
++         * @hide
++         */
++        public static final String COLUMN_SATELLITE_ENTITLEMENT_VOICE_SERVICE_POLICY =
++                "satellite_entitlement_voice_service_policy";
++
+         /** All columns in {@link SimInfo} table. */
+         private static final List<String> ALL_COLUMNS = List.of(
+                 COLUMN_UNIQUE_KEY_SUBSCRIPTION_ID,
+@@ -5072,7 +5175,12 @@ public final class Telephony {
+                 COLUMN_SATELLITE_ENTITLEMENT_STATUS,
+                 COLUMN_SATELLITE_ENTITLEMENT_PLMNS,
+                 COLUMN_SATELLITE_ESOS_SUPPORTED,
+-                COLUMN_IS_SATELLITE_PROVISIONED_FOR_NON_IP_DATAGRAM
++                COLUMN_IS_SATELLITE_PROVISIONED_FOR_NON_IP_DATAGRAM,
++                COLUMN_SATELLITE_ENTITLEMENT_BARRED_PLMNS,
++                COLUMN_SATELLITE_ENTITLEMENT_DATA_PLAN_PLMNS,
++                COLUMN_SATELLITE_ENTITLEMENT_SERVICE_TYPE_MAP,
++                COLUMN_SATELLITE_ENTITLEMENT_DATA_SERVICE_POLICY,
++                COLUMN_SATELLITE_ENTITLEMENT_VOICE_SERVICE_POLICY
+         );
+ 
+         /**
+-- 
+2.55.0

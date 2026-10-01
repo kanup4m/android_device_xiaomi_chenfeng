@@ -1,0 +1,22 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Beyonder <kanup4m@rising>
+Date: Wed, 30 Sep 2026 00:00:00 +0000
+Subject: [PATCH] Dialer: drop removed setRequestPromotedOngoing
+
+Rising Notification.Builder has no setRequestPromotedOngoing. The call
+only marked the ongoing-call notification as promoted; dropping it.
+---
+diff --git a/java/com/android/incallui/StatusBarNotifier.java b/java/com/android/incallui/StatusBarNotifier.java
+index 1111111..2222222 100644
+--- a/java/com/android/incallui/StatusBarNotifier.java
++++ b/java/com/android/incallui/StatusBarNotifier.java
+@@ -353,7 +353,6 @@ public class StatusBarNotifier
+       case NOTIFICATION_IN_CALL:
+         publicBuilder.setColorized(true);
+         builder.setChannelId(NotificationChannelId.ONGOING_CALL);
+-        builder.setRequestPromotedOngoing(true);
+         break;
+       default:
+         break;
+-- 
+2.55.0

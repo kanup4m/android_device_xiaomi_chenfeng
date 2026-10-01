@@ -58,3 +58,53 @@ if [ -d "${ANDROID_BUILD_TOP}/packages/providers/ContactsProvider" ]; then
         done
     fi
 fi
+
+# 5. frameworks/base: restore Lineage satellite-entitlement + OTP (Telephony)
+# and trash (DocumentsContract) APIs dropped by Rising's fork
+if [ -d "${ANDROID_BUILD_TOP}/frameworks/base" ]; then
+    if ! grep -q "COLUMN_SATELLITE_ENTITLEMENT_BARRED_PLMNS" "${ANDROID_BUILD_TOP}/frameworks/base/core/java/android/provider/Telephony.java" 2>/dev/null; then
+        echo "[chenfeng] Applying frameworks/base Lineage API restore patches..."
+        for patch in "${SCRIPT_DIR}/patches/frameworks_base/"*.patch; do
+            [ -f "$patch" ] && git -C "${ANDROID_BUILD_TOP}/frameworks/base" apply --ignore-whitespace "$patch" 2>/dev/null || \
+            patch -d "${ANDROID_BUILD_TOP}/frameworks/base" -p1 -N -r - < "$patch" >/dev/null 2>&1 || true
+        done
+    fi
+fi
+
+# 6. packages/modules/Nfc: Rising dropped DISPLAY_CATEGORY_BUILT_IN_DISPLAYS
+if [ -d "${ANDROID_BUILD_TOP}/packages/modules/Nfc" ]; then
+    if ! git -C "${ANDROID_BUILD_TOP}/packages/modules/Nfc" log -n 50 --grep="avoid removed DISPLAY_CATEGORY_BUILT_IN_DISPLAYS" --oneline 2>/dev/null | grep -q . && \
+       grep -q "DISPLAY_CATEGORY_BUILT_IN_DISPLAYS" "${ANDROID_BUILD_TOP}/packages/modules/Nfc/NfcNci/src/com/android/nfc/ScreenStateHelper.java" 2>/dev/null; then
+        echo "[chenfeng] Applying Nfc built-in display category patch..."
+        for patch in "${SCRIPT_DIR}/patches/packages_modules_Nfc/"*.patch; do
+            [ -f "$patch" ] && git -C "${ANDROID_BUILD_TOP}/packages/modules/Nfc" apply --ignore-whitespace "$patch" 2>/dev/null || \
+            patch -d "${ANDROID_BUILD_TOP}/packages/modules/Nfc" -p1 -N -r - < "$patch" >/dev/null 2>&1 || true
+        done
+    fi
+fi
+
+# 7. packages/apps/Dialer: Rising dropped Notification.Builder
+# setRequestPromotedOngoing
+if [ -d "${ANDROID_BUILD_TOP}/packages/apps/Dialer" ]; then
+    if ! git -C "${ANDROID_BUILD_TOP}/packages/apps/Dialer" log -n 50 --grep="drop removed setRequestPromotedOngoing" --oneline 2>/dev/null | grep -q . && \
+       grep -q "setRequestPromotedOngoing" "${ANDROID_BUILD_TOP}/packages/apps/Dialer/java/com/android/incallui/StatusBarNotifier.java" 2>/dev/null; then
+        echo "[chenfeng] Applying Dialer setRequestPromotedOngoing patch..."
+        for patch in "${SCRIPT_DIR}/patches/packages_apps_Dialer/"*.patch; do
+            [ -f "$patch" ] && git -C "${ANDROID_BUILD_TOP}/packages/apps/Dialer" apply --ignore-whitespace "$patch" 2>/dev/null || \
+            patch -d "${ANDROID_BUILD_TOP}/packages/apps/Dialer" -p1 -N -r - < "$patch" >/dev/null 2>&1 || true
+        done
+    fi
+fi
+
+# 8. packages/providers/CallLogProvider: Rising dropped
+# CallLog.Calls.PREFERRED_DISPLAY_NAME
+if [ -d "${ANDROID_BUILD_TOP}/packages/providers/CallLogProvider" ]; then
+    if ! git -C "${ANDROID_BUILD_TOP}/packages/providers/CallLogProvider" log -n 50 --grep="drop removed PREFERRED_DISPLAY_NAME" --oneline 2>/dev/null | grep -q . && \
+       grep -q "PREFERRED_DISPLAY_NAME" "${ANDROID_BUILD_TOP}/packages/providers/CallLogProvider/src/com/android/calllogbackup/CallLogBackupAgent.java" 2>/dev/null; then
+        echo "[chenfeng] Applying CallLogProvider PREFERRED_DISPLAY_NAME patch..."
+        for patch in "${SCRIPT_DIR}/patches/packages_providers_CallLogProvider/"*.patch; do
+            [ -f "$patch" ] && git -C "${ANDROID_BUILD_TOP}/packages/providers/CallLogProvider" apply --ignore-whitespace "$patch" 2>/dev/null || \
+            patch -d "${ANDROID_BUILD_TOP}/packages/providers/CallLogProvider" -p1 -N -r - < "$patch" >/dev/null 2>&1 || true
+        done
+    fi
+fi
