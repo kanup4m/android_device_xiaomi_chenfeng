@@ -381,15 +381,14 @@ PRODUCT_COPY_FILES += \
     $(LOCAL_PATH)/props/odm_GL.prop:$(TARGET_COPY_OUT_ODM)/etc/odm_GL.prop \
     $(LOCAL_PATH)/props/odm_IN.prop:$(TARGET_COPY_OUT_ODM)/etc/odm_IN.prop
 
-# Soong namespaces
+# Soong namespaces (Qcom.mk already adds hardware/qcom-caf/wlan{,/qcwcn};
+# keep this list aligned with official pineapple trees e.g. peridot)
 PRODUCT_SOONG_NAMESPACES += \
     $(LOCAL_PATH) \
     hardware/google/interfaces \
     hardware/google/pixel \
     hardware/lineage/interfaces/power-libperfmgr \
     hardware/qcom-caf/common/libqti-perfd-client \
-    hardware/qcom-caf/wlan \
-    hardware/qcom-caf/wlan/qcwcn \
     hardware/xiaomi \
     vendor/qcom/opensource/usb/etc
 
